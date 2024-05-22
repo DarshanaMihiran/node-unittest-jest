@@ -2,17 +2,27 @@ const MovieRepo = require('../repos/movieRepo');
 const Movie = require('../models/movieModel');
 const { DatabaseException, NotFoundException } = require('../utils/customErrors');
 
-describe('MovieRepo', () => {
-    afterEach(() => {
-        jest.clearAllMocks();
+const setupMock = (Model, method, returnValue) => {
+    return jest.spyOn(Model, method).mockReturnValueOnce({
+        populate: jest.fn().mockResolvedValueOnce(returnValue)
     });
+};
+
+const mockMovie = { _id: '123', title: 'Test Movie', similarBestMovie: '456' };
+const mockMovies = [{ _id: '123', title: 'Test Movie', similarBestMovie: '456' }];
+const mockMovieData = { title: 'New Movie' };
+const mockNewMovie = { _id: '123', ...mockMovieData };
+
+// Helper function to clear mocks after each test
+afterEach(() => {
+    jest.clearAllMocks();
+});
+
+describe('MovieRepo', () => {
 
     describe('getById', () => {
         it('should return a movie if found', async () => {
-            const mockMovie = { _id: '123', title: 'Test Movie', similarBestMovie: '456' };
-            const findSpy = jest.spyOn(Movie, 'find').mockReturnValueOnce({
-                populate: jest.fn().mockResolvedValueOnce([mockMovie])
-            });
+            const findSpy = setupMock(Movie, 'find', [mockMovie]);
 
             const result = await MovieRepo.getById('123');
             expect(result).toEqual([mockMovie]);
@@ -20,9 +30,7 @@ describe('MovieRepo', () => {
         });
 
         it('should throw NotFoundException if no movie is found', async () => {
-            jest.spyOn(Movie, 'find').mockReturnValueOnce({
-                populate: jest.fn().mockResolvedValueOnce(null)
-            });
+            setupMock(Movie, 'find', null);
 
             await expect(MovieRepo.getById('123')).rejects.toThrow(NotFoundException);
         });
@@ -30,10 +38,7 @@ describe('MovieRepo', () => {
 
     describe('getAllMovies', () => {
         it('should return all movies matching the query', async () => {
-            const mockMovies = [{ _id: '123', title: 'Test Movie', similarBestMovie: '456' }];
-            const findSpy = jest.spyOn(Movie, 'find').mockReturnValueOnce({
-                populate: jest.fn().mockResolvedValueOnce(mockMovies)
-            });
+            const findSpy = setupMock(Movie, 'find', mockMovies);
 
             const result = await MovieRepo.getAllMovies({ title: 'Test Movie' });
             expect(result).toEqual(mockMovies);
@@ -41,9 +46,7 @@ describe('MovieRepo', () => {
         });
 
         it('should throw NotFoundException if no movies are found', async () => {
-            jest.spyOn(Movie, 'find').mockReturnValueOnce({
-                populate: jest.fn().mockResolvedValueOnce(null)
-            });
+            setupMock(Movie, 'find', null);
 
             await expect(MovieRepo.getAllMovies({ title: 'Non-existent Movie' })).rejects.toThrow(NotFoundException);
         });
@@ -51,17 +54,14 @@ describe('MovieRepo', () => {
 
     describe('create', () => {
         it('should create a new movie', async () => {
-            const mockMovieData = { title: 'New Movie' };
-            const mockMovie = { _id: '123', ...mockMovieData };
-            const saveSpy = jest.spyOn(Movie.prototype, 'save').mockResolvedValueOnce(mockMovie);
+            const saveSpy = jest.spyOn(Movie.prototype, 'save').mockResolvedValueOnce(mockNewMovie);
 
             const result = await MovieRepo.create(mockMovieData);
-            expect(result.title).toEqual(mockMovie.title);
+            expect(result.title).toEqual(mockNewMovie.title);
             expect(saveSpy).toHaveBeenCalled();
         });
 
         it('should throw DatabaseException on create error', async () => {
-            const mockMovieData = { title: 'New Movie' };
             const saveSpy = jest.spyOn(Movie.prototype, 'save').mockRejectedValueOnce(new Error('Save error'));
 
             await expect(MovieRepo.create(mockMovieData)).rejects.toThrow(DatabaseException);
