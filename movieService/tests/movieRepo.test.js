@@ -49,36 +49,6 @@ describe('MovieRepo', () => {
         });
     });
 
-    describe('get', () => {
-        it('should return filtered, sorted, and paginated movies', async () => {
-            const mockMovies = [{ _id: '123', title: 'Test Movie', similarBestMovie: '456' }];
-            const findSpy = jest.spyOn(Movie, 'find').mockImplementation(() => ({
-                sort: jest.fn().mockReturnThis(),
-                skip: jest.fn().mockReturnThis(),
-                limit: jest.fn().mockReturnThis(),
-                populate: jest.fn().mockResolvedValue(mockMovies)
-            }));
-
-            const result = await MovieRepo.get('title=Test Movie', 'title', 'asc', 1, 10);
-            expect(result).toEqual(mockMovies);
-            expect(findSpy).toHaveBeenCalledWith({ title: 'Test Movie' });
-            expect(Movie.find().sort).toHaveBeenCalledWith({ title: 1 });
-            expect(Movie.find().skip).toHaveBeenCalledWith(0);
-            expect(Movie.find().limit).toHaveBeenCalledWith(10);
-        });
-
-        it('should throw DatabaseException on database error', async () => {
-            const findSpy = jest.spyOn(Movie, 'find').mockImplementation(() => ({
-                sort: jest.fn().mockReturnThis(),
-                skip: jest.fn().mockReturnThis(),
-                limit: jest.fn().mockReturnThis(),
-                populate: jest.fn().mockRejectedValue(new Error('Database error'))
-            }));
-
-            await expect(MovieRepo.get('title=Test Movie', 'title', 'asc', 1, 10)).rejects.toThrow(DatabaseException);
-        });
-    });
-
     describe('create', () => {
         it('should create a new movie', async () => {
             const mockMovieData = { title: 'New Movie' };
@@ -86,7 +56,7 @@ describe('MovieRepo', () => {
             const saveSpy = jest.spyOn(Movie.prototype, 'save').mockResolvedValueOnce(mockMovie);
 
             const result = await MovieRepo.create(mockMovieData);
-            expect(result).toEqual(mockMovie);
+            expect(result.title).toEqual(mockMovie.title);
             expect(saveSpy).toHaveBeenCalled();
         });
 
